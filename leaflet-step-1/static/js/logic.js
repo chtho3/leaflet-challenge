@@ -1,9 +1,32 @@
 // json data URL
 var url = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_week.geojson"
 
+function circleColor(mag) {
+  if (mag <= 2) {
+    return "blue";
+  }
+  else if (mag <= 3) {
+    return "green";
+  }
+  else if (mag <= 4) {
+    return "yellow";
+  }
+  else if (mag <= 5) {
+    return "orange";
+  }
+  else {
+    return "red";
+  }
+};
+
+function circleSize(mag) {
+  return mag*10000;
+}
+
 // Perform a GET request to the query URL
-d3.json(url, function(data) {
-    console.log(data);
+d3.json(url, function(error, data) {
+  if (error) throw error;
+  console.log(data.features);
     // Once we get a response, send the data.features object to the createFeatures function
     createFeatures(data.features);
   });
@@ -12,43 +35,22 @@ d3.json(url, function(data) {
   
     // Define a function we want to run once for each feature in the features array
     // Give each feature a popup describing the place and time of the earthquake
-    function onEachFeature(feature, layer) {
-      layer.bindPopup("<h3>" + feature.properties.place +
-        "</h3><hr><p>" + new Date(feature.properties.time) + "</p>");
-        // Loop through the cities array and create one marker for each city object
-        for (var i = 0; i < feature.length; i++) {
-
-            // Conditionals for countries points
-            var color = "";
-            if (feature[i].properties['mag'] > 5) {
-            color = "red";
-            }
-            else if (feature[i].properties['mag'] > 3) {
-            color = "pink";
-            }
-            else if (feature[i].properties['mag'] > 2) {
-            color = "violet";
-            }
-            else {
-            color = "gray";
-            }
-        
-            // Add circles to map
-            L.circle(feature[i].properties['place'], {
-            fillOpacity: 0.75,
-            color: "white",
-            fillColor: color,
-            // Adjust radius
-            radius: feature[i].properties['mag'] * 1500
-            }).bindPopup("<h1>" + feature[i].properties['place'] + "</h1> <hr> <h3>Points: " + feature[i].properties['mag'] + "</h3>").addTo(myMap);
-        }
-    }
-  
-    // Create a GeoJSON layer containing the features array on the earthquakeData object
-    // Run the onEachFeature function once for each piece of data in the array
     var earthquakes = L.geoJSON(earthquakeData, {
-      onEachFeature: onEachFeature
+    //map the description for each point
+    onEachFeature : function (feature, layer) {
+      layer.bindPopup("<h3>" + feature.properties.place +
+        "</h3><hr><p>" + new Date(feature.properties.time) + "</p><p>Magnitude: " + 
+        feature.properties.mag + "</p>")},
+    // map the marker color and size
+    pointToLayer : function(feature, latlng) {
+      return new L.circle(latlng,
+        {radius: circleSize(feature.properties.mag),
+        fillColor: circleColor(feature.properties.mag),
+        fillOpacity: 0.75}
+        );
+      }
     });
+ 
   
     // Sending our earthquakes layer to the createMap function
     createMap(earthquakes);
@@ -57,7 +59,7 @@ d3.json(url, function(data) {
   function createMap(earthquakes) {
   
       // Define streetmap and darkmap layers
-  var streetmap = L.tileLayer("https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}", {
+  var satelitemap = L.tileLayer("https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}", {
     attribution: "Map data &copy; <a href=\"https://www.openstreetmap.org/\">OpenStreetMap</a> contributors, <a href=\"https://creativecommons.org/licenses/by-sa/2.0/\">CC-BY-SA</a>, Imagery © <a href=\"https://www.mapbox.com/\">Mapbox</a>",
     maxZoom: 18,
     id: "mapbox.streets",
@@ -65,7 +67,7 @@ d3.json(url, function(data) {
   });
 
       // Define a baseMaps object to hold our base layers
-  var baseMaps = {"Street Map": streetmap};
+  var baseMaps = {"Satelite Map": satelitemap};
   
   L.tileLayer("https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}", {
     attribution: "Map data &copy; <a href=\"https://www.openstreetmap.org/\">OpenStreetMap</a> contributors, <a href=\"https://creativecommons.org/licenses/by-sa/2.0/\">CC-BY-SA</a>, Imagery © <a href=\"https://www.mapbox.com/\">Mapbox</a>",
@@ -83,7 +85,7 @@ d3.json(url, function(data) {
   var myMap = L.map("map", {
     center: [37.09, -95.71],
     zoom: 5,
-    layers: [streetmap, earthquakes]
+    layers: [satelitemap, earthquakes]
   });
 
   // Create a layer control
@@ -92,4 +94,34 @@ d3.json(url, function(data) {
   L.control.layers(baseMaps, overlayMaps, {
     collapsed: false
   }).addTo(myMap);
+
+  var legend = L.control({postiion: 'topright'});
+    legend.onAdd = function() {
+      var legendInfo = [{
+        limit: "Mag: 0-2",
+        color: "blue"
+    },{
+        limit:"Mag: 2-3",
+        color:"green"
+    },{
+        limit:"Mag: 3-4",
+        color:"yellow"
+    },{
+        limit:"Mag: 4-5",
+        color:"orange"
+    },{
+        limit:"Mag: 5+",
+        color:"red"
+    }];
+
+    var header = "<h3>Magnitude</h3><hr>";
+
+    var strng = "";
+  
+    for (i = 0; i < legendInfo.length; i++){
+        strng += "<p style = \"background-color: "+legendInfo[i].color+"\">"+legendInfo[i].limit+"</p> ";
+    }
+      return header+strng;
+    };
+  legend.addTo(myMap);
 }
