@@ -20,7 +20,7 @@ function circleColor(mag) {
 };
 
 function circleSize(mag) {
-  return mag*10000;
+  return mag*10;
 }
 
 // Perform a GET request to the query URL
@@ -32,18 +32,21 @@ d3.json(url, function(error, data) {
   });
   
   function createFeatures(earthquakeData) {
+
+    function onEachFeature(feature, layer) {
+      layer.bindPopup("<h3>" + feature.properties.place +
+        "</h3><hr><p>" + new Date(feature.properties.time) + "</p><p>Magnitude: " + 
+        feature.properties.mag + "</p>")}
   
     // Define a function we want to run once for each feature in the features array
     // Give each feature a popup describing the place and time of the earthquake
     var earthquakes = L.geoJSON(earthquakeData, {
+      
     //map the description for each point
-    onEachFeature : function (feature, layer) {
-      layer.bindPopup("<h3>" + feature.properties.place +
-        "</h3><hr><p>" + new Date(feature.properties.time) + "</p><p>Magnitude: " + 
-        feature.properties.mag + "</p>")},
+    onEachFeature : onEachFeature,
     // map the marker color and size
     pointToLayer : function(feature, latlng) {
-      return new L.circle(latlng,
+      return L.circleMarker(latlng,
         {radius: circleSize(feature.properties.mag),
         fillColor: circleColor(feature.properties.mag),
         fillOpacity: 0.75}
@@ -62,19 +65,20 @@ d3.json(url, function(error, data) {
   var satelitemap = L.tileLayer("https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}", {
     attribution: "Map data &copy; <a href=\"https://www.openstreetmap.org/\">OpenStreetMap</a> contributors, <a href=\"https://creativecommons.org/licenses/by-sa/2.0/\">CC-BY-SA</a>, Imagery © <a href=\"https://www.mapbox.com/\">Mapbox</a>",
     maxZoom: 18,
-    id: "mapbox.streets",
-    accessToken: API_KEY
-  });
-
-      // Define a baseMaps object to hold our base layers
-  var baseMaps = {"Satelite Map": satelitemap};
-  
-  L.tileLayer("https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}", {
-    attribution: "Map data &copy; <a href=\"https://www.openstreetmap.org/\">OpenStreetMap</a> contributors, <a href=\"https://creativecommons.org/licenses/by-sa/2.0/\">CC-BY-SA</a>, Imagery © <a href=\"https://www.mapbox.com/\">Mapbox</a>",
-    maxZoom: 18,
     id: "mapbox.streets-basic",
     accessToken: API_KEY
-  }).addTo(myMap);
+  })
+  
+  var streetMap = L.tileLayer("https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}", {
+    attribution: "Map data &copy; <a href=\"https://www.openstreetmap.org/\">OpenStreetMap</a> contributors, <a href=\"https://creativecommons.org/licenses/by-sa/2.0/\">CC-BY-SA</a>, Imagery © <a href=\"https://www.mapbox.com/\">Mapbox</a>",
+    maxZoom: 18,
+    id: "mapbox.dark",
+    accessToken: API_KEY
+  })
+
+  // Define a baseMaps object to hold our base layers
+  var baseMaps = {"Satelite Map": satelitemap,
+  "Dark Map": streetMap};
 
   // Create overlay object to hold our overlay layer
   var overlayMaps = {
